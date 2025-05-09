@@ -1,11 +1,11 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
+  name: deployvia
   labels:
     app.kubernetes.io/name: deployvia
     app.kubernetes.io/part-of: deployvia
     app.kubernetes.io/component: controller
-  name: deployvia
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

@@ -3,3 +3,4 @@ kind: Kustomization
 
 resources:
   - deployvia-deployment.yaml
+  - deployvia-service.yaml

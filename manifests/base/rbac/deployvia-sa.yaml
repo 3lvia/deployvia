@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+  name: deployvia
   labels:
     app.kubernetes.io/name: deployvia
     app.kubernetes.io/part-of: deployvia
     app.kubernetes.io/component: controller
-  name: deployvia
