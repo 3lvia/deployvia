@@ -46,3 +46,9 @@ spec:
             seccompProfile:
               type: RuntimeDefault
       serviceAccountName: deployvia
+      securityContext:
+        fsGroup: 1001
+        runAsGroup: 1001
+        runAsUser: 1001
+        supplementalGroups:
+          - 1001
