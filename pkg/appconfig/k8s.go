@@ -9,7 +9,6 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-
 func configureKubernetesClient(local bool) (*dynamic.DynamicClient, error) {
 	kubernetesConfig, err := configureKubernetesConfig(local)
 	if err != nil {

@@ -43,6 +43,10 @@ func ValidateDeployment(deployment *Deployment) (*ValidatedDeployment, error) {
 		return nil, fmt.Errorf("application name must only contain alphanumeric characters and hyphens")
 	}
 
+    if deployment.ClusterType == "" {
+        return nil, fmt.Errorf("cluster type is required")
+    }
+
 	if deployment.Environment == "" {
 		return nil, fmt.Errorf("environment is required")
 	}

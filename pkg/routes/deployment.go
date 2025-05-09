@@ -3,7 +3,7 @@ package routes
 import (
 	"context"
 	"fmt"
-    "os"
+	"os"
 
 	"github.com/3lvia/core/applications/deployvia/pkg/appconfig"
 	"github.com/3lvia/core/applications/deployvia/pkg/deploy"
@@ -14,29 +14,29 @@ import (
 )
 
 func PostDeployment(ctx context.Context, c *gin.Context, config *appconfig.Config) {
-    local := os.Getenv("LOCAL") == "true"
+	local := os.Getenv("LOCAL") == "true"
 
-    if !local {
-	gitHubOIDCToken := c.Request.Header.Get("X-GitHub-OIDC-Token")
-	if gitHubOIDCToken == "" {
-		err := fmt.Errorf("X-GitHub-OIDC-Token header is required")
-		log.Error(err)
-		c.JSON(400, gin.H{"error": err.Error()})
+	if !local {
+		gitHubOIDCToken := c.Request.Header.Get("X-GitHub-OIDC-Token")
+		if gitHubOIDCToken == "" {
+			err := fmt.Errorf("X-GitHub-OIDC-Token header is required")
+			log.Error(err)
+			c.JSON(400, gin.H{"error": err.Error()})
 
-		return
+			return
+		}
+
+		const GitHubOIDCURL = "https://token.actions.githubusercontent.com/.well-known/jwks"
+
+		_, err := deploy.ValidateToken(ctx, gitHubOIDCToken, GitHubOIDCURL)
+		if err != nil {
+			err := fmt.Errorf("invalid token: %w", err)
+			log.Error(err)
+			c.JSON(403, gin.H{"error": err.Error()})
+
+			return
+		}
 	}
-
-	const GitHubOIDCURL = "https://token.actions.githubusercontent.com/.well-known/jwks"
-
-	_, err := deploy.ValidateToken(ctx, gitHubOIDCToken, GitHubOIDCURL)
-	if err != nil {
-		err := fmt.Errorf("invalid token: %w", err)
-		log.Error(err)
-		c.JSON(403, gin.H{"error": err.Error()})
-
-		return
-	}
-    }
 
 	validatedDeployment, err := func() (*deploy.ValidatedDeployment, error) {
 		var deployment deploy.Deployment
@@ -60,26 +60,24 @@ func PostDeployment(ctx context.Context, c *gin.Context, config *appconfig.Confi
 		Resource: "applications",
 	}
 
-    appName := fmt.Sprintf(
-        "%s-%s-%s-%s",
-        validatedDeployment.Deployment.System,
-        validatedDeployment.Deployment.ApplicationName,
-        validatedDeployment.Deployment.ClusterType,
-        validatedDeployment.Deployment.Environment,
-    )
+	appName := fmt.Sprintf(
+		"%s-%s-%s-%s",
+		validatedDeployment.Deployment.System,
+		validatedDeployment.Deployment.ApplicationName,
+		validatedDeployment.Deployment.ClusterType,
+		validatedDeployment.Deployment.Environment,
+	)
 
-    app, err := config.KubernetesClient.Resource(gvr).Namespace("argocd").Get(ctx, appName, v1.GetOptions{})
-    if err != nil {
-        log.Warnf("failed to get ArgoCD application: %v", err)
-        c.JSON(404, gin.H{"error": "ArgoCD application not found"})
+	app, err := config.KubernetesClient.Resource(gvr).Namespace("argocd").Get(ctx, appName, v1.GetOptions{})
+	if err != nil {
+		log.Warnf("failed to get ArgoCD application: %v", err)
+		c.JSON(404, gin.H{"error": "ArgoCD application not found"})
 
-        return
-    }
+		return
+	}
 
-    c.JSON(200, gin.H{
-        "message": "Deployment validated successfully",
-        "application": app,
-    })
-
-	return
+	c.JSON(200, gin.H{
+		"message":     "Deployment validated successfully",
+		"application": app,
+	})
 }

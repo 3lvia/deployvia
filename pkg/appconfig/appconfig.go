@@ -4,14 +4,14 @@ import (
 	"context"
 	"errors"
 	"github.com/gin-gonic/gin"
-	"os"
 	"k8s.io/client-go/dynamic"
+	"os"
 )
 
 type Config struct {
 	Environment        string
 	GitHubOIDCURL      string
-    KubernetesClient   *dynamic.DynamicClient
+	KubernetesClient   *dynamic.DynamicClient
 	ApplicationMetrics *ApplicationMetrics
 }
 
@@ -32,14 +32,14 @@ func New(ctx context.Context) (*Config, error) {
 		return nil, err
 	}
 
-    k8sClient, err := configureKubernetesClient(os.Getenv("LOCAL") == "true")
-    if err != nil {
-        return nil, err
-    }
+	k8sClient, err := configureKubernetesClient(os.Getenv("LOCAL") == "true")
+	if err != nil {
+		return nil, err
+	}
 
 	return &Config{
 		Environment:        environment,
-        KubernetesClient:   k8sClient,
+		KubernetesClient:   k8sClient,
 		GitHubOIDCURL:      GITHUB_OIDC_URL,
 		ApplicationMetrics: applicationMetrics,
 	}, nil
