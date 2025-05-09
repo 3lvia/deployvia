@@ -4,13 +4,16 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/3lvia/core/applications/deployvia/pkg/appconfig"
 	"github.com/3lvia/core/applications/deployvia/pkg/deploy"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 )
 
 func PostDeployment(ctx context.Context, c *gin.Context, config *appconfig.Config) {
@@ -68,16 +71,79 @@ func PostDeployment(ctx context.Context, c *gin.Context, config *appconfig.Confi
 		validatedDeployment.Deployment.Environment,
 	)
 
-	app, err := config.KubernetesClient.Resource(gvr).Namespace("argocd").Get(ctx, appName, v1.GetOptions{})
+	err = watchApplicationLifecycle(
+		ctx,
+		config.KubernetesClient,
+		gvr,
+		"argocd",
+		appName,
+		5*time.Minute,
+	)
 	if err != nil {
-		log.Warnf("failed to get ArgoCD application: %v", err)
-		c.JSON(404, gin.H{"error": "ArgoCD application not found"})
+		err := fmt.Errorf("failed to watch application lifecycle: %w", err)
+		log.Error(err)
+		c.JSON(500, gin.H{"error": err.Error()})
 
 		return
 	}
 
-	c.JSON(200, gin.H{
-		"message":     "Deployment validated successfully",
-		"application": app,
+}
+
+func watchApplicationLifecycle(
+	ctx context.Context,
+	client dynamic.Interface,
+	gvr schema.GroupVersionResource,
+	namespace,
+	appName string,
+	timeout time.Duration,
+) error {
+	w, err := client.Resource(gvr).Namespace(namespace).Watch(ctx, metav1.ListOptions{
+		FieldSelector:  fmt.Sprintf("metadata.name=%s", appName),
+		TimeoutSeconds: int64Ptr(int64(timeout.Seconds())),
 	})
+	if err != nil {
+		return fmt.Errorf("failed to watch application: %w", err)
+	}
+
+	defer w.Stop()
+
+	seenOutOfSync := false
+	resultChan := w.ResultChan()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case evt, ok := <-resultChan:
+			if !ok {
+				return fmt.Errorf("watch closed unexpectedly")
+			}
+
+			obj, ok := evt.Object.(*unstructured.Unstructured)
+			if !ok {
+				continue
+			}
+
+			syncStatus, _, _ := unstructured.NestedString(obj.Object, "status", "sync", "status")
+			healthStatus, _, _ := unstructured.NestedString(obj.Object, "status", "health", "status")
+
+			fmt.Printf("Event: %s, sync=%s, health=%s\n", evt.Type, syncStatus, healthStatus)
+
+			if syncStatus == "OutOfSync" {
+				seenOutOfSync = true
+			}
+
+			if seenOutOfSync && syncStatus == "Synced" && healthStatus == "Healthy" {
+				fmt.Println("Application reached Synced & Healthy after OutOfSync.")
+
+				return nil
+			}
+		case <-time.After(timeout):
+			return fmt.Errorf("timed out waiting for application lifecycle")
+		}
+	}
+}
+
+func int64Ptr(i int64) *int64 {
+	return &i
 }
