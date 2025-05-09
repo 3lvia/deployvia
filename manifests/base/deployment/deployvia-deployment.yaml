@@ -21,6 +21,8 @@ spec:
         - image: ghcr.io/3lvia/deployvia:latest
           imagePullPolicy: Always
           env:
+            - name: GIN_MODE
+              value: release
           livenessProbe:
             httpGet:
               path: /status

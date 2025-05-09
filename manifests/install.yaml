@@ -81,7 +81,9 @@ spec:
         app.kubernetes.io/name: deployvia
     spec:
       containers:
-      - env: null
+      - env:
+        - name: GIN_MODE
+          value: release
         image: ghcr.io/3lvia/deployvia:latest
         imagePullPolicy: Always
         livenessProbe:
