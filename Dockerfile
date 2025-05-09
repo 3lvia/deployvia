@@ -21,8 +21,6 @@ RUN apk update && \
 # CVE-2024-12797
 RUN apk add --no-cache libssl3 libcrypto3
 
-RUN apk add openssh
-
 RUN addgroup application-group --gid 1001 && \
     adduser application-user --uid 1001 \
         --ingroup application-group \
@@ -34,9 +32,6 @@ COPY --from=build /app/out .
 
 RUN chown --recursive application-user .
 USER application-user
-
-RUN mkdir -p ${HOME}/.ssh && \
-    ssh-keyscan -H github.com >> ${HOME}/.ssh/known_hosts
 
 EXPOSE 8080
 
