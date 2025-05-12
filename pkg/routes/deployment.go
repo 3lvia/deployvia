@@ -78,14 +78,6 @@ func PostDeployment(ctx context.Context, c *gin.Context, config *appconfig.Confi
 		Resource: "applications",
 	}
 
-	appName := fmt.Sprintf(
-		"%s-%s-%s-%s",
-		validatedDeployment.Deployment.System,
-		validatedDeployment.Deployment.ApplicationName,
-		validatedDeployment.Deployment.ClusterType,
-		validatedDeployment.Deployment.Environment,
-	)
-
 	err = watchApplicationLifecycle(
 		ctx,
 		config.KubernetesClient,

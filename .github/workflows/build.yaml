@@ -27,6 +27,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Get version
+        run: echo "VERSION=v$(cat VERSION)" >> "$GITHUB_ENV"
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -41,7 +44,10 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: 'true'
-          tags: "${{ env.IMAGE_NAME }}:${{ github.sha }}${{ (github.event_name == 'push' && github.ref == 'refs/heads/trunk') && format(',{0}:latest', env.IMAGE_NAME) || '' }}"
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+            ${{ (github.event_name == 'push' && github.ref == 'refs/heads/trunk') && format('{0}:latest', env.IMAGE_NAME) || '' }}
           cache-from: 'type=registry,ref=${{ env.IMAGE_NAME }}:latest'
           cache-to: 'type=inline'
 
