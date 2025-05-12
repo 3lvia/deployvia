@@ -1,0 +1,29 @@
+name: Tag image
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: 'ghcr.io'
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Re-tag image from latest
+        run: |
+          docker pull "$IMAGE_NAME:latest"
+          docker tag "$IMAGE_NAME:latest" "$IMAGE_NAME:$TAG"
+          docker push "$IMAGE_NAME:$TAG"
+        env:
+          IMAGE_NAME: 'ghcr.io/${{ github.repository }}'
+          TAG: ${{ github.ref_name }}

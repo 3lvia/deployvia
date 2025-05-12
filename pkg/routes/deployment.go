@@ -57,6 +57,21 @@ func PostDeployment(ctx context.Context, c *gin.Context, config *appconfig.Confi
 		return
 	}
 
+    timeout := func() time.Duration {
+        timeoutHeader := c.Request.Header.Get("X-Timeout")
+        if timeoutHeader == "" {
+            return 2*time.Minute
+        }
+
+        timeout, err := time.ParseDuration(timeoutHeader)
+        if err != nil {
+            return 2 * time.Minute
+        }
+
+        return timeout
+    }()
+
+
 	gvr := schema.GroupVersionResource{
 		Group:    "argoproj.io",
 		Version:  "v1alpha1",
@@ -76,8 +91,8 @@ func PostDeployment(ctx context.Context, c *gin.Context, config *appconfig.Confi
 		config.KubernetesClient,
 		gvr,
 		"argocd",
-		appName,
-		5*time.Minute,
+        validatedDeployment,
+        timeout,
 	)
 	if err != nil {
 		err := fmt.Errorf("failed to watch application lifecycle: %w", err)
@@ -93,19 +108,40 @@ func watchApplicationLifecycle(
 	ctx context.Context,
 	client dynamic.Interface,
 	gvr schema.GroupVersionResource,
-	namespace,
-	appName string,
+	namespace string,
+    validatedDeployment *deploy.ValidatedDeployment,
 	timeout time.Duration,
 ) error {
-	_, err := client.Resource(gvr).Namespace(namespace).Get(ctx, appName, metav1.GetOptions{})
+    application, err := client.Resource(gvr).Namespace(namespace).List(
+        ctx,
+        metav1.ListOptions{
+            LabelSelector: fmt.Sprintf(
+                "elvia.no/system=%s,elvia.no/application=%s,elvia.no/cluster-type=%s,kubernetes.io/environment=%s",
+                validatedDeployment.Deployment.System,
+                validatedDeployment.Deployment.ApplicationName,
+                validatedDeployment.Deployment.ClusterType,
+                validatedDeployment.Deployment.Environment,
+            ),
+        },
+    )
 	if err != nil {
-		return fmt.Errorf("failed to get application %s in namespace %s: %w", appName, namespace, err)
+        return fmt.Errorf("failed to get application for deployment: %w", err)
 	}
+
+    if len(application.Items) == 0 {
+        return fmt.Errorf("application not found")
+    }
+
+    if len(application.Items) > 1 {
+        return fmt.Errorf("multiple applications found")
+    }
+
+    applicationName := application.Items[0].GetName()
 
 	w, err := client.Resource(gvr).Namespace(namespace).Watch(
 		ctx,
 		metav1.ListOptions{
-			FieldSelector:  fmt.Sprintf("metadata.name=%s", appName),
+			FieldSelector:  fmt.Sprintf("metadata.name=%s", applicationName),
 			TimeoutSeconds: int64Ptr(int64(timeout.Seconds())),
 		},
 	)
@@ -135,14 +171,14 @@ func watchApplicationLifecycle(
 			syncStatus, _, _ := unstructured.NestedString(obj.Object, "status", "sync", "status")
 			healthStatus, _, _ := unstructured.NestedString(obj.Object, "status", "health", "status")
 
-			fmt.Printf("Event: %s, sync=%s, health=%s\n", evt.Type, syncStatus, healthStatus)
+			log.Infof("Event: %s, sync=%s, health=%s\n", evt.Type, syncStatus, healthStatus)
 
 			if syncStatus == "OutOfSync" {
 				seenOutOfSync = true
 			}
 
 			if seenOutOfSync && syncStatus == "Synced" && healthStatus == "Healthy" {
-				fmt.Println("Application reached Synced & Healthy after OutOfSync.")
+				log.Infof("Application reached Synced & Healthy after OutOfSync.")
 
 				return nil
 			}
