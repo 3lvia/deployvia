@@ -47,12 +47,8 @@ func main() {
 
 	go func() {
 		<-quit
-		log.Println("receive interrupt signal")
-		if err := cleanup(); err != nil {
-			log.Println("cleanup error:", err)
-		} else {
-			log.Println("cleanup success")
-		}
+		log.Info("receive interrupt signal")
+
 		if err := server.Close(); err != nil {
 			log.Fatal("Server Close:", err)
 		}
@@ -60,15 +56,11 @@ func main() {
 
 	if err := server.ListenAndServe(); err != nil {
 		if err == http.ErrServerClosed {
-			log.Println("Server closed under request")
+			log.Info("Server closed under request")
 		} else {
 			log.Fatal("Server closed unexpect")
 		}
 	}
 
 	log.Println("Server exiting")
-}
-
-func cleanup() error {
-	return os.RemoveAll("/tmp/argocd")
 }

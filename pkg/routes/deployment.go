@@ -97,10 +97,18 @@ func watchApplicationLifecycle(
 	appName string,
 	timeout time.Duration,
 ) error {
-	w, err := client.Resource(gvr).Namespace(namespace).Watch(ctx, metav1.ListOptions{
-		FieldSelector:  fmt.Sprintf("metadata.name=%s", appName),
-		TimeoutSeconds: int64Ptr(int64(timeout.Seconds())),
-	})
+	_, err := client.Resource(gvr).Namespace(namespace).Get(ctx, appName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get application %s in namespace %s: %w", appName, namespace, err)
+	}
+
+	w, err := client.Resource(gvr).Namespace(namespace).Watch(
+		ctx,
+		metav1.ListOptions{
+			FieldSelector:  fmt.Sprintf("metadata.name=%s", appName),
+			TimeoutSeconds: int64Ptr(int64(timeout.Seconds())),
+		},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to watch application: %w", err)
 	}
