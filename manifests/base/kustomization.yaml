@@ -3,7 +3,7 @@ kind: Kustomization
 
 images:
   - name: ghcr.io/3lvia/deployvia
-    newTag: v0.1.0
+    newTag: v0.1.1
 
 resources:
   - ./deployment

@@ -94,6 +94,8 @@ func PostDeployment(ctx context.Context, c *gin.Context, config *appconfig.Confi
 		return
 	}
 
+    log.Infof("Deployment %s/%s successfully deployed", validatedDeployment.Deployment.System, validatedDeployment.Deployment.ApplicationName)
+    c.JSON(200, gin.H{"message": "Application successfully deployed"})
 }
 
 func watchApplicationLifecycle(
