@@ -1,4 +1,4 @@
-package appconfig
+package config
 
 import (
 	"context"
@@ -11,6 +11,7 @@ type Config struct {
 	GitHubOIDCURL      string
 	KubernetesClient   *dynamic.DynamicClient
 	ApplicationMetrics *ApplicationMetrics
+	Local              bool
 }
 
 func New(ctx context.Context) (*Config, error) {
@@ -26,9 +27,12 @@ func New(ctx context.Context) (*Config, error) {
 		return nil, err
 	}
 
+	local := os.Getenv("LOCAL") == "true"
+
 	return &Config{
 		KubernetesClient:   k8sClient,
 		GitHubOIDCURL:      GITHUB_OIDC_URL,
 		ApplicationMetrics: applicationMetrics,
+		Local:              local,
 	}, nil
 }

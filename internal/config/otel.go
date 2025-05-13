@@ -1,4 +1,4 @@
-package appconfig
+package config
 
 import (
 	"context"
@@ -133,7 +133,7 @@ func configureMetrics(ctx context.Context, resource *resource.Resource) (*Applic
 	}, nil
 }
 
-func Metrics(config *Config) gin.HandlerFunc {
+func ConfigureMetrics(conf *Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		t := time.Now()
 		c.Next()
@@ -151,13 +151,13 @@ func Metrics(config *Config) gin.HandlerFunc {
 			attribute.Key("controller").String("gin"),
 		}
 
-		config.ApplicationMetrics.httpRequestDurationSeconds.Record(
+		conf.ApplicationMetrics.httpRequestDurationSeconds.Record(
 			c.Request.Context(),
 			latency.Seconds(),
 			meter.WithAttributes(meterAttributes...),
 		)
 
-		config.ApplicationMetrics.httpRequestsReceivedTotal.Add(
+		conf.ApplicationMetrics.httpRequestsReceivedTotal.Add(
 			c.Request.Context(),
 			1,
 			meter.WithAttributes(meterAttributes...),
