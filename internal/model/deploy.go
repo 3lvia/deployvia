@@ -1,4 +1,4 @@
-package deploy
+package model
 
 import (
 	"fmt"

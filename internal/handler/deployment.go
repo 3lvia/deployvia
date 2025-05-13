@@ -1,13 +1,12 @@
-package routes
+package handler
 
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
-	"github.com/3lvia/core/applications/deployvia/pkg/appconfig"
-	"github.com/3lvia/core/applications/deployvia/pkg/deploy"
+	"github.com/3lvia/core/applications/deployvia/internal/config"
+	"github.com/3lvia/core/applications/deployvia/internal/model"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,10 +15,8 @@ import (
 	"k8s.io/client-go/dynamic"
 )
 
-func PostDeployment(ctx context.Context, c *gin.Context, config *appconfig.Config) {
-	local := os.Getenv("LOCAL") == "true"
-
-	if !local {
+func PostDeployment(ctx context.Context, c *gin.Context, config *config.Config) {
+	if !config.Local {
 		gitHubOIDCToken := c.Request.Header.Get("X-GitHub-OIDC-Token")
 		if gitHubOIDCToken == "" {
 			err := fmt.Errorf("X-GitHub-OIDC-Token header is required")
@@ -31,7 +28,7 @@ func PostDeployment(ctx context.Context, c *gin.Context, config *appconfig.Confi
 
 		const GitHubOIDCURL = "https://token.actions.githubusercontent.com/.well-known/jwks"
 
-		_, err := deploy.ValidateToken(ctx, gitHubOIDCToken, GitHubOIDCURL)
+		_, err := model.ValidateToken(ctx, gitHubOIDCToken, GitHubOIDCURL)
 		if err != nil {
 			err := fmt.Errorf("invalid token: %w", err)
 			log.Error(err)
@@ -41,13 +38,13 @@ func PostDeployment(ctx context.Context, c *gin.Context, config *appconfig.Confi
 		}
 	}
 
-	validatedDeployment, err := func() (*deploy.ValidatedDeployment, error) {
-		var deployment deploy.Deployment
+	validatedDeployment, err := func() (*model.ValidatedDeployment, error) {
+		var deployment model.Deployment
 		if err := c.ShouldBindJSON(&deployment); err != nil {
 			return nil, err
 		}
 
-		return deploy.ValidateDeployment(&deployment)
+		return model.ValidateDeployment(&deployment)
 	}()
 	if err != nil {
 		err := fmt.Errorf("invalid deployment: %w", err)
@@ -57,20 +54,19 @@ func PostDeployment(ctx context.Context, c *gin.Context, config *appconfig.Confi
 		return
 	}
 
-    timeout := func() time.Duration {
-        timeoutHeader := c.Request.Header.Get("X-Timeout")
-        if timeoutHeader == "" {
-            return 2*time.Minute
-        }
+	timeout := func() time.Duration {
+		timeoutHeader := c.Request.Header.Get("X-Timeout")
+		if timeoutHeader == "" {
+			return 2 * time.Minute
+		}
 
-        timeout, err := time.ParseDuration(timeoutHeader)
-        if err != nil {
-            return 2 * time.Minute
-        }
+		timeout, err := time.ParseDuration(timeoutHeader)
+		if err != nil {
+			return 2 * time.Minute
+		}
 
-        return timeout
-    }()
-
+		return timeout
+	}()
 
 	gvr := schema.GroupVersionResource{
 		Group:    "argoproj.io",
@@ -83,8 +79,8 @@ func PostDeployment(ctx context.Context, c *gin.Context, config *appconfig.Confi
 		config.KubernetesClient,
 		gvr,
 		"argocd",
-        validatedDeployment,
-        timeout,
+		validatedDeployment,
+		timeout,
 	)
 	if err != nil {
 		err := fmt.Errorf("failed to watch application lifecycle: %w", err)
@@ -94,8 +90,8 @@ func PostDeployment(ctx context.Context, c *gin.Context, config *appconfig.Confi
 		return
 	}
 
-    log.Infof("Deployment %s/%s successfully deployed", validatedDeployment.Deployment.System, validatedDeployment.Deployment.ApplicationName)
-    c.JSON(200, gin.H{"message": "Application successfully deployed"})
+	log.Infof("Deployment %s/%s successfully deployed", validatedDeployment.Deployment.System, validatedDeployment.Deployment.ApplicationName)
+	c.JSON(200, gin.H{"message": "Application successfully deployed"})
 }
 
 func watchApplicationLifecycle(
@@ -103,34 +99,34 @@ func watchApplicationLifecycle(
 	client dynamic.Interface,
 	gvr schema.GroupVersionResource,
 	namespace string,
-    validatedDeployment *deploy.ValidatedDeployment,
+	validatedDeployment *model.ValidatedDeployment,
 	timeout time.Duration,
 ) error {
-    application, err := client.Resource(gvr).Namespace(namespace).List(
-        ctx,
-        metav1.ListOptions{
-            LabelSelector: fmt.Sprintf(
-                "elvia.no/system=%s,elvia.no/application=%s,elvia.no/cluster-type=%s,kubernetes.io/environment=%s",
-                validatedDeployment.Deployment.System,
-                validatedDeployment.Deployment.ApplicationName,
-                validatedDeployment.Deployment.ClusterType,
-                validatedDeployment.Deployment.Environment,
-            ),
-        },
-    )
+	application, err := client.Resource(gvr).Namespace(namespace).List(
+		ctx,
+		metav1.ListOptions{
+			LabelSelector: fmt.Sprintf(
+				"elvia.no/system=%s,elvia.no/application=%s,elvia.no/cluster-type=%s,kubernetes.io/environment=%s",
+				validatedDeployment.Deployment.System,
+				validatedDeployment.Deployment.ApplicationName,
+				validatedDeployment.Deployment.ClusterType,
+				validatedDeployment.Deployment.Environment,
+			),
+		},
+	)
 	if err != nil {
-        return fmt.Errorf("failed to get application for deployment: %w", err)
+		return fmt.Errorf("failed to get application for deployment: %w", err)
 	}
 
-    if len(application.Items) == 0 {
-        return fmt.Errorf("application not found")
-    }
+	if len(application.Items) == 0 {
+		return fmt.Errorf("application not found")
+	}
 
-    if len(application.Items) > 1 {
-        return fmt.Errorf("multiple applications found")
-    }
+	if len(application.Items) > 1 {
+		return fmt.Errorf("multiple applications found")
+	}
 
-    applicationName := application.Items[0].GetName()
+	applicationName := application.Items[0].GetName()
 
 	w, err := client.Resource(gvr).Namespace(namespace).Watch(
 		ctx,

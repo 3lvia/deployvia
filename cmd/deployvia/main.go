@@ -6,36 +6,21 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/3lvia/core/applications/deployvia/pkg/appconfig"
-	"github.com/3lvia/core/applications/deployvia/pkg/routes"
-	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/3lvia/core/applications/deployvia/internal/config"
+	"github.com/3lvia/core/applications/deployvia/internal/route"
 	log "github.com/sirupsen/logrus"
 )
 
 func main() {
 	ctx := context.Background()
 
-	config, err := appconfig.New(ctx)
+	config, err := config.New(ctx)
 	if err != nil {
 		log.Fatal("failed to load config:", err)
 	}
 
-	router := gin.New()
-	router.Use(gin.Logger())
-	router.Use(appconfig.Metrics(config))
-
-	router.GET("/status", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "OK",
-		})
-	})
-
-	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
-
-	router.POST("/deployment", func(c *gin.Context) {
-		routes.PostDeployment(ctx, c, config)
-	})
+    router := route.SetupRouter(config)
+    route.RegisterRoutes(ctx, router, config)
 
 	server := &http.Server{
 		Addr:    ":8080",
