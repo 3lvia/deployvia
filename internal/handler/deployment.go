@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"time"
+    "os"
 
-	"github.com/3lvia/core/applications/deployvia/internal/config"
-	"github.com/3lvia/core/applications/deployvia/internal/model"
+	"github.com/3lvia/deployvia/internal/config"
+	"github.com/3lvia/deployvia/internal/model"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,8 +16,17 @@ import (
 	"k8s.io/client-go/dynamic"
 )
 
-func PostDeployment(ctx context.Context, c *gin.Context, config *config.Config) {
-	if !config.Local {
+func PostDeployment(
+    ctx context.Context,
+    c *gin.Context,
+    config *config.Config,
+) {
+    testingEnableOIDC := os.Getenv("TESTING_ENABLE_OIDC") == "true"
+    if testingEnableOIDC {
+        log.Errorf("TESTING_ENABLE_OIDC is set to true; THIS SHOULD NEVER BE USED IN PRODUCTION!")
+    }
+
+	if !config.Local || testingEnableOIDC {
 		gitHubOIDCToken := c.Request.Header.Get("X-GitHub-OIDC-Token")
 		if gitHubOIDCToken == "" {
 			err := fmt.Errorf("X-GitHub-OIDC-Token header is required")

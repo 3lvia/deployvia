@@ -1,4 +1,4 @@
-module github.com/3lvia/core/applications/deployvia
+module github.com/3lvia/deployvia
 
 go 1.24.0
 

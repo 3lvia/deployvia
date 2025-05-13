@@ -2,8 +2,8 @@ package route
 
 import (
 	"context"
-	"github.com/3lvia/core/applications/deployvia/internal/config"
-	"github.com/3lvia/core/applications/deployvia/internal/handler"
+	"github.com/3lvia/deployvia/internal/config"
+	"github.com/3lvia/deployvia/internal/handler"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )

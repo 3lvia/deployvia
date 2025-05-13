@@ -6,8 +6,8 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/3lvia/core/applications/deployvia/internal/config"
-	"github.com/3lvia/core/applications/deployvia/internal/route"
+	"github.com/3lvia/deployvia/internal/config"
+	"github.com/3lvia/deployvia/internal/route"
 	log "github.com/sirupsen/logrus"
 )
 
