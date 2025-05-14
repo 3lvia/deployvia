@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"path/filepath"
 
 	"k8s.io/client-go/dynamic"
@@ -25,7 +26,16 @@ func configureKubernetesClient(local bool) (*dynamic.DynamicClient, error) {
 
 func configureKubernetesConfig(local bool) (*rest.Config, error) {
 	if local {
-		kubernetesConfig, err := clientcmd.BuildConfigFromFlags("", filepath.Join(homedir.HomeDir(), ".kube", "config"))
+		kubeconfigPath := func() string {
+			kubeconfigEnv := os.Getenv("KUBECONFIG")
+			if kubeconfigEnv != "" {
+				return kubeconfigEnv
+			}
+
+			return filepath.Join(homedir.HomeDir(), ".kube", "config")
+		}()
+
+		kubernetesConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
 		if err != nil {
 			return nil, err
 		}

@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gin-gonic/gin"
 
 	"github.com/3lvia/deployvia/internal/config"
 	"github.com/3lvia/deployvia/internal/model"
@@ -89,7 +90,7 @@ func TestPostDeployment(t *testing.T) {
 		t.Errorf("Handler returned wrong status code: got %v want %v", status, expectedStatus)
 	}
 
-	expected := `{"error":"failed to watch application lifecycle: application not found"}`
+	expected := `{"error":"application(s) not found"}`
 	if rr.Body.String() != expected {
 		t.Errorf("Handler returned unexpected body: got %v want %v", rr.Body.String(), expected)
 	}

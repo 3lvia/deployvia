@@ -13,11 +13,12 @@ type ValidatedDeployment struct {
 }
 
 type Deployment struct {
-	ApplicationName string `json:"application_name"`
-	System          string `json:"system"`
-	ClusterType     string `json:"cluster_type"`
-	Environment     string `json:"environment"`
-	Image           string `json:"image"`
+	ApplicationName  string `json:"application_name"`
+	System           string `json:"system"`
+	ClusterType      string `json:"cluster_type"`
+	CheckAllClusters bool   `json:"check_all_clusters,omitempty"`
+	Environment      string `json:"environment"`
+	Image            string `json:"image"`
 }
 
 func ValidateDeployment(deployment *Deployment) (*ValidatedDeployment, error) {

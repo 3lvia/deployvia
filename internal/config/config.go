@@ -2,8 +2,9 @@ package config
 
 import (
 	"context"
-	"k8s.io/client-go/dynamic"
 	"os"
+
+	"k8s.io/client-go/dynamic"
 )
 
 type Config struct {
@@ -12,6 +13,7 @@ type Config struct {
 	KubernetesClient   *dynamic.DynamicClient
 	ApplicationMetrics *ApplicationMetrics
 	Local              bool
+	Port               string
 }
 
 func New(ctx context.Context) (*Config, error) {
@@ -29,10 +31,20 @@ func New(ctx context.Context) (*Config, error) {
 
 	local := os.Getenv("LOCAL") == "true"
 
+	port := func() string {
+		port_ := os.Getenv("PORT")
+		if port_ == "" {
+			return "8080"
+		}
+
+		return port_
+	}()
+
 	return &Config{
 		KubernetesClient:   k8sClient,
 		GitHubOIDCURL:      GITHUB_OIDC_URL,
 		ApplicationMetrics: applicationMetrics,
 		Local:              local,
+		Port:               port,
 	}, nil
 }

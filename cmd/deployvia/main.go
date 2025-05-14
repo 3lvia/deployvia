@@ -19,11 +19,11 @@ func main() {
 		log.Fatal("failed to load config:", err)
 	}
 
-    router := route.SetupRouter(config)
-    route.RegisterRoutes(ctx, router, config)
+	router := route.SetupRouter(config)
+	route.RegisterRoutes(ctx, router, config)
 
 	server := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":" + config.Port,
 		Handler: router,
 	}
 
@@ -35,17 +35,19 @@ func main() {
 		log.Info("receive interrupt signal")
 
 		if err := server.Close(); err != nil {
-			log.Fatal("Server Close:", err)
+			log.Error("failed to close server:", err)
+		} else {
+			log.Info("server closed")
 		}
 	}()
 
 	if err := server.ListenAndServe(); err != nil {
 		if err == http.ErrServerClosed {
-			log.Info("Server closed under request")
+			log.Info("server closed under request")
 		} else {
-			log.Fatal("Server closed unexpect")
+			log.Fatal("server closed unexpectedly:", err)
 		}
 	}
 
-	log.Println("Server exiting")
+	log.Info("Server exiting")
 }

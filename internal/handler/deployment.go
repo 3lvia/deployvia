@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/3lvia/deployvia/internal/config"
@@ -86,7 +87,7 @@ func PostDeployment(
 		Resource: "applications",
 	}
 
-	err = watchApplicationLifecycle(
+	err = watchApplicationsLifecycle(
 		ctx,
 		config.KubernetesClient,
 		gvr,
@@ -95,15 +96,97 @@ func PostDeployment(
 		timeout,
 	)
 	if err != nil {
-		err := fmt.Errorf("failed to watch application lifecycle: %w", err)
 		log.Error(err)
 		c.JSON(500, gin.H{"error": err.Error()})
 
 		return
 	}
 
-	log.Infof("Deployment %s/%s successfully deployed", validatedDeployment.Deployment.System, validatedDeployment.Deployment.ApplicationName)
-	c.JSON(200, gin.H{"message": "Application successfully deployed"})
+	c.JSON(200, gin.H{"message": "Application successfully deployed!"})
+}
+
+func watchApplicationsLifecycle(
+	ctx context.Context,
+	client dynamic.Interface,
+	gvr schema.GroupVersionResource,
+	namespace string,
+	validatedDeployment *model.ValidatedDeployment,
+	timeout time.Duration,
+) error {
+	applications, err := client.Resource(gvr).Namespace(namespace).List(
+		ctx,
+		metav1.ListOptions{
+			LabelSelector: getLabelSelector(validatedDeployment),
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to get application for deployment: %w", err)
+	}
+
+	if len(applications.Items) == 0 {
+		return fmt.Errorf("application(s) not found")
+	}
+
+	if len(applications.Items) > 1 && !validatedDeployment.Deployment.CheckAllClusters {
+		return fmt.Errorf("multiple applications found when only one was expected")
+	}
+
+	var applicationNames []string
+	for _, application := range applications.Items {
+		name, found, err := unstructured.NestedString(application.Object, "metadata", "name")
+		if err != nil {
+			return fmt.Errorf("failed to get application name: %w", err)
+		}
+
+		if found {
+			applicationNames = append(applicationNames, name)
+		}
+	}
+
+	var (
+		wg    sync.WaitGroup
+		errCh = make(chan error, len(applicationNames)) // buffered to avoid goroutine leaks
+	)
+
+	for _, applicationName := range applicationNames {
+		wg.Add(1)
+		appName := applicationName // avoid loop variable capture issue
+
+		go func() {
+			defer wg.Done()
+			err := watchApplicationLifecycle(
+				ctx,
+				client,
+				gvr,
+				namespace,
+				validatedDeployment,
+				timeout,
+				appName,
+			)
+			if err != nil {
+				errCh <- fmt.Errorf("failed to watch %s: %w", appName, err)
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(errCh)
+
+	// Check if any errors occurred
+	var combinedErr error
+	for err := range errCh {
+		if combinedErr == nil {
+			combinedErr = err
+		} else {
+			combinedErr = fmt.Errorf("%v; %w", combinedErr, err)
+		}
+	}
+
+	if combinedErr != nil {
+		return combinedErr
+	}
+
+	return nil
 }
 
 func watchApplicationLifecycle(
@@ -113,33 +196,8 @@ func watchApplicationLifecycle(
 	namespace string,
 	validatedDeployment *model.ValidatedDeployment,
 	timeout time.Duration,
+	applicationName string,
 ) error {
-	application, err := client.Resource(gvr).Namespace(namespace).List(
-		ctx,
-		metav1.ListOptions{
-			LabelSelector: fmt.Sprintf(
-				"elvia.no/system=%s,elvia.no/application=%s,elvia.no/cluster-type=%s,kubernetes.io/environment=%s",
-				validatedDeployment.Deployment.System,
-				validatedDeployment.Deployment.ApplicationName,
-				validatedDeployment.Deployment.ClusterType,
-				validatedDeployment.Deployment.Environment,
-			),
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("failed to get application for deployment: %w", err)
-	}
-
-	if len(application.Items) == 0 {
-		return fmt.Errorf("application not found")
-	}
-
-	if len(application.Items) > 1 {
-		return fmt.Errorf("multiple applications found")
-	}
-
-	applicationName := application.Items[0].GetName()
-
 	w, err := client.Resource(gvr).Namespace(namespace).Watch(
 		ctx,
 		metav1.ListOptions{
@@ -153,7 +211,6 @@ func watchApplicationLifecycle(
 
 	defer w.Stop()
 
-	seenOutOfSync := false
 	resultChan := w.ResultChan()
 
 	for {
@@ -170,17 +227,63 @@ func watchApplicationLifecycle(
 				continue
 			}
 
-			syncStatus, _, _ := unstructured.NestedString(obj.Object, "status", "sync", "status")
-			healthStatus, _, _ := unstructured.NestedString(obj.Object, "status", "health", "status")
-
-			log.Infof("Event: %s, sync=%s, health=%s\n", evt.Type, syncStatus, healthStatus)
-
-			if syncStatus == "OutOfSync" {
-				seenOutOfSync = true
+			system, found, err := unstructured.NestedString(obj.Object, "metadata", "labels", "elvia.no/system")
+			if err != nil || !found {
+				return fmt.Errorf("failed to get system label: %w", err)
 			}
 
-			if seenOutOfSync && syncStatus == "Synced" && healthStatus == "Healthy" {
-				log.Infof("Application reached Synced & Healthy after OutOfSync.")
+			name, found, err := unstructured.NestedString(obj.Object, "metadata", "labels", "elvia.no/application")
+			if err != nil || !found {
+				return fmt.Errorf("failed to get application label: %w", err)
+			}
+
+			environment, found, err := unstructured.NestedString(obj.Object, "metadata", "labels", "kubernetes.io/environment")
+			if err != nil || !found {
+				return fmt.Errorf("failed to get environment label: %w", err)
+			}
+
+			clusterType, found, err := unstructured.NestedString(obj.Object, "metadata", "labels", "elvia.no/cluster-type")
+			if err != nil || !found {
+				return fmt.Errorf("failed to get cluster-type label: %w", err)
+			}
+
+			syncStatus, found, err := unstructured.NestedString(obj.Object, "status", "sync", "status")
+			if err != nil || !found {
+				return fmt.Errorf("failed to get sync status: %w", err)
+			}
+
+			healthStatus, found, err := unstructured.NestedString(obj.Object, "status", "health", "status")
+			if err != nil || !found {
+				return fmt.Errorf("failed to get health status: %w", err)
+			}
+
+			currentImages, found, err := unstructured.NestedStringSlice(
+				obj.Object,
+				"status",
+				"summary",
+				"images",
+			)
+			if err != nil || !found {
+				return fmt.Errorf("failed to get current images: %w", err)
+			}
+
+			log_ := log.WithFields(log.Fields{
+				"system":      system,
+				"name":        name,
+				"environment": environment,
+				"clusterType": clusterType,
+			})
+
+			if len(currentImages) != 1 {
+				return fmt.Errorf("Expected 1 image, got %d", len(currentImages))
+			}
+
+			log_.Infof("Event: %s, sync=%s, health=%s\n", evt.Type, syncStatus, healthStatus)
+			currentImage := currentImages[0]
+			log_.Infof("Current image: %s", currentImage)
+
+			if syncStatus == "Synced" && healthStatus == "Healthy" && currentImage == validatedDeployment.Deployment.Image {
+				log_.Infof("Application is synced and healthy with requested image '%s'", currentImage)
 
 				return nil
 			}
@@ -188,6 +291,27 @@ func watchApplicationLifecycle(
 			return fmt.Errorf("timed out waiting for application lifecycle")
 		}
 	}
+}
+
+func getLabelSelector(
+	validatedDeployment *model.ValidatedDeployment,
+) string {
+	baseLabelSelector := fmt.Sprintf(
+		"elvia.no/system=%s,elvia.no/application=%s,kubernetes.io/environment=%s",
+		validatedDeployment.Deployment.System,
+		validatedDeployment.Deployment.ApplicationName,
+		validatedDeployment.Deployment.Environment,
+	)
+
+	if !validatedDeployment.Deployment.CheckAllClusters {
+		return fmt.Sprintf(
+			"%s,elvia.no/cluster-type=%s",
+			baseLabelSelector,
+			validatedDeployment.Deployment.ClusterType,
+		)
+	}
+
+	return baseLabelSelector
 }
 
 func int64Ptr(i int64) *int64 {
