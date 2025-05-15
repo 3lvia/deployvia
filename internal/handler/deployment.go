@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
-    "os"
 
 	"github.com/3lvia/deployvia/internal/config"
 	"github.com/3lvia/deployvia/internal/model"
@@ -17,14 +17,14 @@ import (
 )
 
 func PostDeployment(
-    ctx context.Context,
-    c *gin.Context,
-    config *config.Config,
+	ctx context.Context,
+	c *gin.Context,
+	config *config.Config,
 ) {
-    testingEnableOIDC := os.Getenv("TESTING_ENABLE_OIDC") == "true"
-    if testingEnableOIDC {
-        log.Errorf("TESTING_ENABLE_OIDC is set to true; THIS SHOULD NEVER BE USED IN PRODUCTION!")
-    }
+	testingEnableOIDC := os.Getenv("TESTING_ENABLE_OIDC") == "true"
+	if testingEnableOIDC {
+		log.Errorf("TESTING_ENABLE_OIDC is set to true; THIS SHOULD NEVER BE USED IN PRODUCTION!")
+	}
 
 	if !config.Local || testingEnableOIDC {
 		gitHubOIDCToken := c.Request.Header.Get("X-GitHub-OIDC-Token")
@@ -65,14 +65,16 @@ func PostDeployment(
 	}
 
 	timeout := func() time.Duration {
+		const defaultTimeout = 3 * time.Minute
+
 		timeoutHeader := c.Request.Header.Get("X-Timeout")
 		if timeoutHeader == "" {
-			return 2 * time.Minute
+			return defaultTimeout
 		}
 
 		timeout, err := time.ParseDuration(timeoutHeader)
 		if err != nil {
-			return 2 * time.Minute
+			return defaultTimeout
 		}
 
 		return timeout
