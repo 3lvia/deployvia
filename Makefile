@@ -25,6 +25,11 @@ lint:
 lint-fix:
 	golangci-lint run --fix ./...
 
+## format: Run gofumpt on all Go files.
+.PHONY: format
+format:
+	gofumpt -l -w .
+
 ## build: Build the binary (tries to guess the OS and architecture).
 .PHONY: build
 build:
