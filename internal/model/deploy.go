@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 // We use a 'Validated(MyStruct)' pattern to wrap struct types that need to be validated, e.g. fields are checked for zero values or regex patterns.
@@ -54,6 +55,15 @@ func ValidateDeployment(deployment *Deployment) (*ValidatedDeployment, error) {
 
 	if deployment.Image == "" {
 		return nil, fmt.Errorf("image is required")
+	}
+
+	if !strings.Contains(deployment.Image, deployment.Environment) {
+		parts := strings.Split(deployment.Image, "@")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("image must be in the format name@digest or name:environment@digest")
+		}
+
+		deployment.Image = fmt.Sprintf("%s:%s@%s", parts[0], deployment.Environment, parts[1])
 	}
 
 	return &ValidatedDeployment{Deployment: deployment}, nil

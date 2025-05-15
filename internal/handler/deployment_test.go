@@ -68,7 +68,7 @@ func TestPostDeployment(t *testing.T) {
 		System:          "core",
 		ClusterType:     "aks",
 		Environment:     "dev",
-		Image:           "asdf", // not used
+		Image:           "ghcr.io/3lvia/core-demo-api-go:dev@sha256:1234567890abcdef",
 	}
 
 	body, err := json.Marshal(deployment)
@@ -112,7 +112,7 @@ func TestPostDeploymentNoToken(t *testing.T) {
 		System:          "core",
 		ClusterType:     "aks",
 		Environment:     "dev",
-		Image:           "asdf", // not used
+		Image:           "ghcr.io/3lvia/core-demo-api-go:dev@sha256:1234567890abcdef",
 	}
 
 	body, err := json.Marshal(deployment)
@@ -156,7 +156,7 @@ func TestPostDeploymentInvalidToken(t *testing.T) {
 		System:          "core",
 		ClusterType:     "aks",
 		Environment:     "dev",
-		Image:           "asdf", // not used
+		Image:           "ghcr.io/3lvia/core-demo-api-go@sha256:1234567890abcdef",
 	}
 
 	body, err := json.Marshal(deployment)
