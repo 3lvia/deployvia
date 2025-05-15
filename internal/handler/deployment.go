@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -274,16 +276,14 @@ func watchApplicationLifecycle(
 				"clusterType": clusterType,
 			})
 
-			if len(currentImages) != 1 {
-				return fmt.Errorf("Expected 1 image, got %d", len(currentImages))
-			}
-
 			log_.Infof("Event: %s, sync=%s, health=%s\n", evt.Type, syncStatus, healthStatus)
-			currentImage := currentImages[0]
-			log_.Infof("Current image: %s", currentImage)
+			log_.Infof("Current images: %v", strings.Join(currentImages, ", "))
 
-			if syncStatus == "Synced" && healthStatus == "Healthy" && currentImage == validatedDeployment.Deployment.Image {
-				log_.Infof("Application is synced and healthy with requested image '%s'", currentImage)
+			if syncStatus == "Synced" &&
+				healthStatus == "Healthy" &&
+				slices.Contains(currentImages, validatedDeployment.Deployment.Image) &&
+				len(currentImages) == 1 {
+				log_.Infof("Application is synced and healthy with single requested image '%s'!", validatedDeployment.Deployment.Image)
 
 				return nil
 			}
