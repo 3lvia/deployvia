@@ -277,14 +277,14 @@ func watchApplicationLifecycle(
 			})
 
 			log_.Infof("Event: %s, sync=%s, health=%s\n", evt.Type, syncStatus, healthStatus)
-			log_.Infof("Current images: %v", strings.Join(currentImages, ", "))
+			log_.Infof("Current image(s): %v", strings.Join(currentImages, ", "))
 
-			if syncStatus == "Synced" &&
-				healthStatus == "Healthy" &&
-				slices.Contains(currentImages, validatedDeployment.Deployment.Image) &&
-				len(currentImages) == 1 {
-				log_.Infof("Application is synced and healthy with single requested image '%s'!", validatedDeployment.Deployment.Image)
+			synced := syncStatus == "Synced"
+			healthy := healthStatus == "Healthy"
+			imageDeployed := slices.Contains(currentImages, validatedDeployment.Deployment.Image)
 
+			if synced && healthy && imageDeployed {
+				log_.Info("Application is synced and healthy with the expected image")
 				return nil
 			}
 		case <-time.After(timeout):
