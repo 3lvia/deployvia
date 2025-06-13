@@ -2,16 +2,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: deployvia
-  labels:
-    app.kubernetes.io/name: deployvia
-    app.kubernetes.io/part-of: deployvia
-    app.kubernetes.io/component: controller
 spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: deployvia
-  strategy:
-    type: Recreate
   template:
     metadata:
       labels:

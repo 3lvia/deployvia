@@ -58,7 +58,9 @@ spec:
     port: 80
     targetPort: 8080
   selector:
+    app.kubernetes.io/component: controller
     app.kubernetes.io/name: deployvia
+    app.kubernetes.io/part-of: deployvia
   type: ClusterIP
 ---
 apiVersion: apps/v1
@@ -72,13 +74,15 @@ metadata:
 spec:
   selector:
     matchLabels:
+      app.kubernetes.io/component: controller
       app.kubernetes.io/name: deployvia
-  strategy:
-    type: Recreate
+      app.kubernetes.io/part-of: deployvia
   template:
     metadata:
       labels:
+        app.kubernetes.io/component: controller
         app.kubernetes.io/name: deployvia
+        app.kubernetes.io/part-of: deployvia
     spec:
       containers:
       - env:

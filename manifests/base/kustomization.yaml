@@ -1,6 +1,13 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/name: deployvia
+      app.kubernetes.io/part-of: deployvia
+
 images:
   - name: ghcr.io/3lvia/deployvia
     newTag: v0.2.4
