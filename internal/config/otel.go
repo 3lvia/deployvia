@@ -28,7 +28,7 @@ type ApplicationMetrics struct {
 
 const (
 	APPLICATION_NAME = "deployvia"
-	SYSTEM_NAME      = "core"
+	SYSTEM_NAME      = "argocd"
 )
 
 func ConfigureOpenTelemetry(ctx context.Context) (*ApplicationMetrics, error) {
@@ -106,9 +106,6 @@ func configureMetrics(ctx context.Context, resource *resource.Resource) (*Applic
 		"http_request_duration_seconds",
 		meter.WithDescription("The duration of HTTP requests processed by Gin, in seconds."),
 		meter.WithExplicitBucketBoundaries(
-			0.001,
-			0.002,
-			0.005,
 			0.01,
 			0.02,
 			0.05,
@@ -121,6 +118,9 @@ func configureMetrics(ctx context.Context, resource *resource.Resource) (*Applic
 			10,
 			20,
 			60,
+			120,
+			300,
+			600,
 		),
 	)
 	if err != nil {
