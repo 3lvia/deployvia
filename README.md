@@ -33,7 +33,7 @@ We have two Grafana dashboards [here](https://elvia.grafana.net/dashboards/f/eep
 
 ### How to release new version
 
-**TODO**: Automate this process.
+**TODO**: Automate this process more.
 
 1. Increment the version in `VERSION` file.
 
@@ -46,5 +46,3 @@ kustomize build manifests/base > manifests/install.yaml
 ```
 
 1. Commit and push the changes.
-
-1. Create a new release on GitHub with the tag `v<version>`, e.g. `v0.1.0`.
