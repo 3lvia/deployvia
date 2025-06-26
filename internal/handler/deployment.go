@@ -26,7 +26,15 @@ func PostDeployment(
 ) {
 	testingEnableOIDC := os.Getenv("TESTING_ENABLE_OIDC") == "true"
 	if testingEnableOIDC {
-		log.Errorf("TESTING_ENABLE_OIDC is set to true; THIS SHOULD NEVER BE USED IN PRODUCTION!")
+		log.Warnf("TESTING_ENABLE_OIDC is set to true; THIS SHOULD NEVER BE USED IN PRODUCTION!")
+
+		if !config.Local {
+			log.Fatal("TESTING_ENABLE_OIDC is set to true, but the application is not running in local mode. Exiting.")
+		}
+
+		if config.Environment == "production" {
+			log.Fatal("TESTING_ENABLE_OIDC is set to true, but the application is running in production environment. Exiting.")
+		}
 	}
 
 	if !config.Local || testingEnableOIDC {

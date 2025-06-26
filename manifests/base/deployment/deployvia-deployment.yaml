@@ -17,6 +17,8 @@ spec:
           env:
             - name: GIN_MODE
               value: release
+            - name: ENVIRONMENT
+              value: production
           livenessProbe:
             httpGet:
               path: /status
