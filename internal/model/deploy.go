@@ -35,22 +35,32 @@ func ValidateDeployment(deployment *Deployment) (*ValidatedDeployment, error) {
 		return nil, fmt.Errorf("application name is required")
 	}
 
-	re := regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
+	alphanumHyphenRegex := regexp.MustCompile(`^[a-zA-Z0-9-]+$`)
 
-	if !re.MatchString(deployment.System) {
+	if !alphanumHyphenRegex.MatchString(deployment.System) {
 		return nil, fmt.Errorf("system name must only contain alphanumeric characters and hyphens")
 	}
 
-	if !re.MatchString(deployment.ApplicationName) {
+	if !alphanumHyphenRegex.MatchString(deployment.ApplicationName) {
 		return nil, fmt.Errorf("application name must only contain alphanumeric characters and hyphens")
 	}
+
+	alphabeticOnlyRegex := regexp.MustCompile(`^[a-zA-Z]+$`)
 
 	if deployment.ClusterType == "" {
 		return nil, fmt.Errorf("cluster type is required")
 	}
 
+	if !alphabeticOnlyRegex.MatchString(deployment.ClusterType) {
+		return nil, fmt.Errorf("cluster type must only contain alphanumeric characters and hyphens")
+	}
+
 	if deployment.Environment == "" {
 		return nil, fmt.Errorf("environment is required")
+	}
+
+	if !alphabeticOnlyRegex.MatchString(deployment.Environment) {
+		return nil, fmt.Errorf("environment must only contain alphabetic characters")
 	}
 
 	if deployment.Image == "" {
