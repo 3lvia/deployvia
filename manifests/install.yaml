@@ -21,8 +21,6 @@ rules:
   resources:
   - applications
   - applications/status
-  - applicationsets
-  - applicationsets/status
   verbs:
   - get
   - list
@@ -88,7 +86,9 @@ spec:
       - env:
         - name: GIN_MODE
           value: release
-        image: ghcr.io/3lvia/deployvia:v0.2.5
+        - name: ENVIRONMENT
+          value: production
+        image: ghcr.io/3lvia/deployvia:v0.2.6
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
