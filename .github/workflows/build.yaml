@@ -11,6 +11,8 @@ on:
     paths-ignore:
       - 'README.md'
       - 'manifests/**'
+  schedule:
+    - cron: '1 3 * * 5' # Every Friday at 03:01 UTC
 
 jobs:
   build:

@@ -1,5 +1,7 @@
-.github/workflows/
-compose.yaml
+.github/
 hack/
+manifests/
+Makefile
+compose.yaml
 README.md
 LICENSE
