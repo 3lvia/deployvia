@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/MicahParks/keyfunc/v3 v3.4.0
 	github.com/gin-gonic/gin v1.10.1
-	github.com/golang-jwt/jwt/v5 v5.2.2
+	github.com/golang-jwt/jwt/v5 v5.2.3
 	github.com/prometheus/client_golang v1.22.0
 	github.com/sirupsen/logrus v1.9.3
 	go.opentelemetry.io/contrib/bridges/otellogrus v0.12.0
