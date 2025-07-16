@@ -15,9 +15,9 @@ This is where **deployvia** comes in. It allows you to check the status of your 
 
 - Runs in the same Kubernetes cluster and namespace as an Argo CD instance and watches `Application` resources with specific labels.
 - Provides a single endpoint (`/deployment`) for checking the status of a deployment:
-  - endpoint requires a valued GitHub Actions OIDC token from the 3lvia organization.
+  - endpoint requires a valid GitHub Actions OIDC token from the 3lvia organization.
   - endpoint is protected by Traefik (reverse proxy) using IP whitelisting and rate limiting. Only Elvia-hosted GitHub runners can access it.
-  - endpoint will not respond request until the matching `Application` has finished syncing and the correct image tag is deployed.
+  - endpoint will not respond to the request until the matching `Application` has finished syncing and the correct image tag is deployed.
 
 ## Development
 
