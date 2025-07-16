@@ -3,5 +3,11 @@
   "extends": ["config:base"],
   "postUpdateOptions": ["gomodTidy", "gomodUpdateImportPaths"],
   "minimumReleaseAge": "3 days",
-  "prCreation": "not-pending"
+  "prCreation": "not-pending",
+  "packageRules": [
+    {
+      "matchPackageNames": ["^k8s.io/"],
+      "groupName": "Kubernetes packages"
+    }
+  ]
 }
