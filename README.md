@@ -24,7 +24,7 @@ This is where **deployvia** comes in. It allows you to check the status of your 
 ### Running locally
 
 ```
-env LOCAL=true go run cmd/deployvia/main.go
+make run
 ```
 
 ### Monitoring
