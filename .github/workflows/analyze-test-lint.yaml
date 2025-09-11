@@ -38,10 +38,10 @@ jobs:
   #     cancel-in-progress: true
   #   steps:
   #     - name: Checkout repository
-  #       uses: actions/checkout@v4
+  #       uses: actions/checkout@v5
 
   #     - name: Setup Go
-  #       uses: actions/setup-go@v5
+  #       uses: actions/setup-go@v6
   #       with:
   #         cache-dependency-path: 'go.sum' # TODO: is this needed?
   #         go-version-file: 'go.mod'
@@ -59,10 +59,10 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           cache-dependency-path: 'go.sum' # TODO: is this needed?
           go-version-file: 'go.mod'
