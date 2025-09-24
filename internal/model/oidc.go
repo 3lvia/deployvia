@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/time/rate"
+
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -16,7 +18,16 @@ type ValidatedClaims struct {
 
 // Fetch the JWKS and use it to create a verification key function.
 func createKeyFunc(ctx context.Context, jwksURL string) (jwt.Keyfunc, error) {
-	k, err := keyfunc.NewDefaultCtx(ctx, []string{jwksURL})
+	override := keyfunc.Override{
+		RefreshInterval:   time.Hour,
+		RefreshUnknownKID: rate.NewLimiter(rate.Every(time.Second), 5),
+		RefreshErrorHandlerFunc: func(u string) func(ctx context.Context, err error) {
+			return func(ctx context.Context, err error) {
+				fmt.Printf("JWKS refresh error from %s: %v\n", u, err)
+			}
+		},
+	}
+	k, err := keyfunc.NewDefaultOverrideCtx(ctx, []string{jwksURL}, override)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create keyfunc: %v", err)
 	}
