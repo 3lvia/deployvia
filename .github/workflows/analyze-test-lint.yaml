@@ -38,7 +38,7 @@ jobs:
   #     cancel-in-progress: true
   #   steps:
   #     - name: Checkout repository
-  #       uses: actions/checkout@v5
+  #       uses: actions/checkout@v6
 
   #     - name: Setup Go
   #       uses: actions/setup-go@v6
@@ -59,7 +59,7 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -68,6 +68,6 @@ jobs:
           go-version-file: 'go.mod'
 
       - name: Run linter
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
           args: '--timeout=5m ./...'
