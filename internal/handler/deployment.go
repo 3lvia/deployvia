@@ -317,7 +317,7 @@ func watchApplicationLifecycle(
 				"clusterType": clusterType,
 			})
 
-			log_.Infof("Event: %s, sync=%s, health=%s\n", evt.Type, syncStatus, healthStatus)
+			log_.Infof("Event: %s, sync=%s, health=%s", evt.Type, syncStatus, healthStatus)
 			log_.Infof("Current image(s): %v", strings.Join(currentImages, ", "))
 
 			if isApplicationReady(obj, validatedDeployment) {
@@ -331,24 +331,47 @@ func watchApplicationLifecycle(
 }
 
 func isApplicationReady(obj *unstructured.Unstructured, validatedDeployment *model.ValidatedDeployment) bool {
+	name, _, _ := unstructured.NestedString(obj.Object, "metadata", "name")
+	log_ := log.WithFields(log.Fields{
+		"applicationName": name,
+		"system":         validatedDeployment.Deployment.System,
+		"application":    validatedDeployment.Deployment.ApplicationName,
+		"environment":    validatedDeployment.Deployment.Environment,
+		"clusterType":     validatedDeployment.Deployment.ClusterType,
+		"expectedImage":  validatedDeployment.Deployment.Image,
+	})
+
 	syncStatus, found, err := unstructured.NestedString(obj.Object, "status", "sync", "status")
 	if err != nil || !found {
+		log_.WithFields(log.Fields{"error": err, "found": found}).Debug("Missing or error reading sync status")
 		return false
 	}
 
 	healthStatus, found, err := unstructured.NestedString(obj.Object, "status", "health", "status")
 	if err != nil || !found {
+		log_.WithFields(log.Fields{"error": err, "found": found}).Debug("Missing or error reading health status")
 		return false
 	}
 
 	currentImages, found, err := unstructured.NestedStringSlice(obj.Object, "status", "summary", "images")
 	if err != nil || !found {
+		log_.WithFields(log.Fields{"error": err, "found": found}).Debug("Missing or error reading images summary")
 		return false
 	}
 
 	synced := syncStatus == "Synced"
 	healthy := healthStatus == "Healthy"
 	imageDeployed := slices.Contains(currentImages, validatedDeployment.Deployment.Image)
+
+	log_.WithFields(log.Fields{
+		"syncStatus":    syncStatus,
+		"healthStatus":  healthStatus,
+		"currentImages": currentImages,
+		"synced":        synced,
+		"healthy":       healthy,
+		"imageDeployed": imageDeployed,
+		"expectedImage":  validatedDeployment.Deployment.Image,
+	}).Info("Computed readiness status")
 
 	return synced && healthy && imageDeployed
 }
