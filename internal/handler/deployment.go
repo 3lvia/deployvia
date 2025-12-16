@@ -208,6 +208,21 @@ func watchApplicationLifecycle(
 	timeout time.Duration,
 	applicationName string,
 ) error {
+	// Check if already in desired state because watch will time out if it is
+	app, err := client.Resource(gvr).Namespace(namespace).Get(
+		ctx,
+		applicationName,
+		metav1.GetOptions{},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to get application: %w", err)
+	}
+
+	if isApplicationReady(app, validatedDeployment) {
+		log.WithField("applicationName", applicationName).Info("Application is already in desired state")
+		return nil
+	}
+
 	w, err := client.Resource(gvr).Namespace(namespace).Watch(
 		ctx,
 		metav1.ListOptions{
@@ -216,10 +231,18 @@ func watchApplicationLifecycle(
 		},
 	)
 	if err != nil {
+		log.WithFields(log.Fields{
+			"applicationName": applicationName,
+			"namespace":       namespace,
+			"error":           err,
+		}).Error("Failed to create watch")
 		return fmt.Errorf("failed to watch application: %w", err)
 	}
 
-	defer w.Stop()
+	defer func() {
+		log.WithField("applicationName", applicationName).Debug("Stopping watch")
+		w.Stop()
+	}()
 
 	resultChan := w.ResultChan()
 
@@ -228,12 +251,22 @@ func watchApplicationLifecycle(
 		case <-ctx.Done():
 			return ctx.Err()
 		case evt, ok := <-resultChan:
+			//  ok == false means that resultChan is closed (the watch session has ended)
 			if !ok {
-				return fmt.Errorf("watch closed unexpectedly")
+				log.WithFields(log.Fields{
+					"applicationName": applicationName,
+					"namespace":       namespace,
+				}).Error("Watch channel closed unexpectedly - this may indicate the watch timed out or was terminated by the server")
+				return fmt.Errorf("watch closed unexpectedly for application %s", applicationName)
 			}
 
+			// ok == false means that the type assertion failed
 			obj, ok := evt.Object.(*unstructured.Unstructured)
 			if !ok {
+				log.WithFields(log.Fields{
+					"applicationName": applicationName,
+					"eventType":       evt.Type,
+				}).Warn("Received event with unexpected object type, skipping")
 				continue
 			}
 
@@ -287,11 +320,7 @@ func watchApplicationLifecycle(
 			log_.Infof("Event: %s, sync=%s, health=%s\n", evt.Type, syncStatus, healthStatus)
 			log_.Infof("Current image(s): %v", strings.Join(currentImages, ", "))
 
-			synced := syncStatus == "Synced"
-			healthy := healthStatus == "Healthy"
-			imageDeployed := slices.Contains(currentImages, validatedDeployment.Deployment.Image)
-
-			if synced && healthy && imageDeployed {
+			if isApplicationReady(obj, validatedDeployment) {
 				log_.Info("Application is synced and healthy with the expected image")
 				return nil
 			}
@@ -299,6 +328,29 @@ func watchApplicationLifecycle(
 			return fmt.Errorf("timed out waiting for application lifecycle")
 		}
 	}
+}
+
+func isApplicationReady(obj *unstructured.Unstructured, validatedDeployment *model.ValidatedDeployment) bool {
+	syncStatus, found, err := unstructured.NestedString(obj.Object, "status", "sync", "status")
+	if err != nil || !found {
+		return false
+	}
+
+	healthStatus, found, err := unstructured.NestedString(obj.Object, "status", "health", "status")
+	if err != nil || !found {
+		return false
+	}
+
+	currentImages, found, err := unstructured.NestedStringSlice(obj.Object, "status", "summary", "images")
+	if err != nil || !found {
+		return false
+	}
+
+	synced := syncStatus == "Synced"
+	healthy := healthStatus == "Healthy"
+	imageDeployed := slices.Contains(currentImages, validatedDeployment.Deployment.Image)
+
+	return synced && healthy && imageDeployed
 }
 
 func getLabelSelector(
