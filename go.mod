@@ -10,13 +10,13 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	go.opentelemetry.io/contrib/bridges/otellogrus v0.14.0
 	go.opentelemetry.io/otel v1.39.0
-	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.14.0
-	go.opentelemetry.io/otel/exporters/prometheus v0.60.0
+	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.15.0
+	go.opentelemetry.io/otel/exporters/prometheus v0.61.0
 	go.opentelemetry.io/otel/log v0.15.0
 	go.opentelemetry.io/otel/metric v1.39.0
-	go.opentelemetry.io/otel/sdk v1.38.0
-	go.opentelemetry.io/otel/sdk/log v0.14.0
-	go.opentelemetry.io/otel/sdk/metric v1.38.0
+	go.opentelemetry.io/otel/sdk v1.39.0
+	go.opentelemetry.io/otel/sdk/log v0.15.0
+	go.opentelemetry.io/otel/sdk/metric v1.39.0
 	golang.org/x/time v0.14.0
 	k8s.io/apimachinery v0.34.2
 	k8s.io/client-go v0.34.2
