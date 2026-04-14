@@ -3,7 +3,6 @@
   "extends": ["config:recommended", "helpers:pinGitHubActionDigestsToSemver"],
   "postUpdateOptions": ["gomodTidy", "gomodUpdateImportPaths"],
   "minimumReleaseAge": "3 days",
-  "prCreation": "not-pending",
   "packageRules": [
     {
       "matchUpdateTypes": ["patch"],
