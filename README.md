@@ -1,3 +1,8 @@
+# DEPRECATED - NO LONGER MAINTAINED
+
+Due to Argo CD support for developer deployments not having been prioritized, this project has been deprecated and archived.
+Feel free to un-archive and continue development in the future.
+
 # deployvia
 
 _Was my application successfully deployed?_ 🚀
